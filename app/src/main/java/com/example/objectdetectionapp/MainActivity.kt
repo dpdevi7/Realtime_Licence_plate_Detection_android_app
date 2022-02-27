@@ -29,8 +29,8 @@ import java.util.concurrent.Executors
 @RuntimePermissions
 class MainActivity : AppCompatActivity() {
     companion object {
-        private const val MODEL_FILE_NAME = "ssd_mobilenet_v1.tflite"
-        private const val LABEL_FILE_NAME = "coco_dataset_labels.txt"
+        private const val MODEL_FILE_NAME = "ssd320_fpn_panel_detection_with_metadata.tflite"
+        private const val LABEL_FILE_NAME = "panel_detection_labels.txt"
     }
 
     private lateinit var overlaySurfaceView: OverlaySurfaceView

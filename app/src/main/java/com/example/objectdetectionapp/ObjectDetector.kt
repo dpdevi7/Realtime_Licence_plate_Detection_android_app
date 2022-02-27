@@ -36,13 +36,13 @@ class ObjectDetector(
 
     companion object {
         // モデルのinputとoutputサイズ
-        private const val IMG_SIZE_X = 300
-        private const val IMG_SIZE_Y = 300
+        private const val IMG_SIZE_X = 320
+        private const val IMG_SIZE_Y = 320
         private const val MAX_DETECTION_NUM = 10
 
         // 今回使うtfliteモデルは量子化済みなのでnormalize関連は127.5fではなく以下の通り
-        private const val NORMALIZE_MEAN = 0f
-        private const val NORMALIZE_STD = 1f
+        private const val NORMALIZE_MEAN = 127.5f
+        private const val NORMALIZE_STD = 127.5f
 
         // 検出結果のスコアしきい値
         private const val SCORE_THRESHOLD = 0.5f
@@ -81,11 +81,18 @@ class ObjectDetector(
     private val outputDetectionNum: FloatArray = FloatArray(1)
 
     // 検出結果を受け取るためにmapにまとめる
+//    private val outputMap = mapOf(
+//        0 to outputBoundingBoxes,
+//        1 to outputLabels,
+//        2 to outputScores,
+//        3 to outputDetectionNum
+//    )
+
     private val outputMap = mapOf(
-        0 to outputBoundingBoxes,
-        1 to outputLabels,
-        2 to outputScores,
-        3 to outputDetectionNum
+        0 to outputScores,
+        1 to outputBoundingBoxes,
+        2 to outputDetectionNum,
+        3 to outputLabels
     )
 
     // cameraXから流れてくるプレビューのimageを物体検知モデルに入れて推論する
@@ -113,26 +120,35 @@ class ObjectDetector(
         loop@ for (i in 0 until outputDetectionNum[0].toInt()) {
             val score = outputScores[0][i]
             val label = labels[outputLabels[0][i].toInt()]
-            val boundingBox = RectF(
-                outputBoundingBoxes[0][i][1] * resultViewSize.width,
-                outputBoundingBoxes[0][i][0] * resultViewSize.height,
-                outputBoundingBoxes[0][i][3] * resultViewSize.width,
-                outputBoundingBoxes[0][i][2] * resultViewSize.height
-            )
+            // Log.d("DEVIII", "detect: " + label)
+            val xmin_offset = outputBoundingBoxes[0][i][1] * resultViewSize.width * 0.1 * -1
+            val ymin_offset = 0// outputBoundingBoxes[0][i][0] * resultViewSize.width * 0.1 * -1
+            val xmax_offset = outputBoundingBoxes[0][i][3] * resultViewSize.width * 0.1
+            val ymax_offset = 0//outputBoundingBoxes[0][i][2] * resultViewSize.width * 0.1
 
-            // しきい値よりも大きいもののみ追加
-            if (score >= SCORE_THRESHOLD) {
-                detectedObjectList.add(
-                    DetectionObject(
-                        score = score,
-                        label = label,
-                        boundingBox = boundingBox
-                    )
+            if (label == "licenseplate"){
+                val boundingBox = RectF(
+                    outputBoundingBoxes[0][i][1] * resultViewSize.width + xmin_offset.toFloat(),
+                    outputBoundingBoxes[0][i][0] * resultViewSize.height + ymin_offset.toFloat(),
+                    outputBoundingBoxes[0][i][3] * resultViewSize.width + xmax_offset.toFloat(),
+                    outputBoundingBoxes[0][i][2] * resultViewSize.height + ymax_offset.toFloat()
                 )
-            } else {
-                // 検出結果はスコアの高い順にソートされたものが入っているので、しきい値を下回ったらループ終了
-                break@loop
+
+                // しきい値よりも大きいもののみ追加
+                if (score >= SCORE_THRESHOLD) {
+                    detectedObjectList.add(
+                        DetectionObject(
+                            score = score,
+                            label = label,
+                            boundingBox = boundingBox
+                        )
+                    )
+                } else {
+                    // 検出結果はスコアの高い順にソートされたものが入っているので、しきい値を下回ったらループ終了
+                    break@loop
+                }
             }
+
         }
         return detectedObjectList.take(4)
     }
